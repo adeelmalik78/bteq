@@ -55,15 +55,11 @@ Before running the demos, ensure you have:
   - Place the JAR file in a known location (e.g., `~/lib/terajdbc.jar`)
   - Add to Liquibase classpath (see below)
 - **Java 17+** - Required for Liquibase 4.29.0
-- **Maven** - To build the BTEQ executor extension
-- **Liquibase 4.29.0+** - With the BTEQ executor extension jar
+- **Liquibase 5.1.0+** - With the BTEQ executor extension jar
+- **liquibase-commercial-teradata.jar** - This is the Teradata extension with BTEQ integration.
+  - Place the JAR file in the same location as the `teradatajdbc.jar`
 
-### Build the Extension
 
-```bash
-cd ..  # Return to project root
-mvn clean package -DskipTests
-```
 
 ### Configure Teradata JDBC Driver
 
@@ -103,29 +99,6 @@ Run the reset script to automatically:
 ./reset.sh
 ```
 
-**Environment variable overrides:**
-
-You can customize connection details and credentials via environment variables:
-
-```bash
-# Customize Teradata connection (admin credentials to create demo environment)
-TD_HOST=my-teradata-server TD_USER=myuser TD_PASSWORD=mypass ./reset.sh
-
-# Customize demo user credentials (for running Liquibase)
-DEMO_USER=my_demo_user DEMO_PASSWORD=my_demo_pass ./reset.sh
-
-# Combine both
-TD_HOST=my-server TD_USER=dbc TD_PASSWORD=dbc_pass \
-DEMO_USER=demo_user DEMO_PASSWORD=demo_pass \
-./reset.sh
-```
-
-**Default values:**
-- Admin: `dbc/dbc` on `localhost:1025`
-- Demo user: `demo_user/demo_pass`
-- Database: `bteq_demo`
-
-**Note**: You only need admin credentials (dbc) for the reset script. The demos will run as the `demo_user`, which has limited permissions on only the `bteq_demo` database.
 
 ### 2. Run Demo Scenarios
 
