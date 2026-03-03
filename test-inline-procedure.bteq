@@ -1,0 +1,20 @@
+-- test-inline-procedure.bteq
+-- Demonstrates BTEQ's semicolon parsing limitation with stored procedures
+--
+-- Expected Result: FAILURE
+-- BTEQ splits the procedure at each semicolon, treating each line as a separate statement.
+
+.LOGON myserver/myuser,mypassword
+
+DATABASE mydb;
+
+-- This is the simplest possible stored procedure with a BEGIN/END block
+REPLACE PROCEDURE test_simple_proc()
+BEGIN
+    DECLARE v_count INTEGER;
+    SET v_count = 1;
+    SELECT v_count;
+END;
+
+.LOGOFF
+.QUIT
