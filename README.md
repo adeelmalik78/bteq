@@ -54,10 +54,11 @@ Before running the demos, ensure you have:
 - **Teradata JDBC Driver** - Download from [Teradata Downloads](https://downloads.teradata.com/download/connectivity/jdbc-driver)
   - Place the JAR file in a known location (e.g., `~/lib/terajdbc.jar`)
   - Add to Liquibase classpath (see below)
-- **Java 17+** - Required for Liquibase 4.29.0
-- **Liquibase 5.1.0+** - With the BTEQ executor extension jar
 - **liquibase-commercial-teradata.jar** - This is the Teradata extension with BTEQ integration.
   - Place the JAR file in the same location as the `teradatajdbc.jar`
+![JAR files location in Liquibase install directory](jars/jar_files.png)
+- **Java 17+** - Required for Liquibase 4.29.0
+- **Liquibase 5.1.0+** - With the BTEQ executor extension jar
 
 
 
