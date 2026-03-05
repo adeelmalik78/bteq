@@ -2,6 +2,8 @@
 
 --changeset demo:s1-create-demo-tables runWith:bteq
 --comment: Create tables for macro execution demonstration
+-- .SET ERRORLEVEL 3807 SEVERITY 0
+
 CREATE TABLE demo_products (
     product_id INTEGER,
     product_name VARCHAR(100)
