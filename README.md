@@ -20,11 +20,11 @@ The BTEQ Executor enables Liquibase to capture complete output from Teradata ope
 | [reset.sh](reset.sh) | Idempotent script to create fresh `bteq_demo` database | |
 | [changelogs/scenario-1-macro-output.sql](changelogs/scenario-1-macro-output.sql) | Demonstrates macro execution output capture | Working |
 | [changelogs/scenario-2-query-results.sql](changelogs/scenario-2-query-results.sql) | Demonstrates SELECT streaming and MINUS queries | Working |
-| [changelogs/scenario-3-stored-procedures.sql](changelogs/scenario-3-stored-procedures.sql) | Demonstrates stored procedure creation and CALL execution | **Blocked** - see [Issue #3](https://github.com/recampbell/bteq-executor/issues/3) |
+| ~~[changelogs/scenario-3-stored-procedures.sql](changelogs/scenario-3-stored-procedures.sql)~~ | Demonstrates stored procedure creation and CALL execution | **Blocked** - see [Issue #3](https://github.com/recampbell/bteq-executor/issues/3) |
 | [changelogs/scenario-4-rollback.sql](changelogs/scenario-4-rollback.sql) | Demonstrates rollback functionality with tagged changesets | Working |
 | [changelogs/scenario-5-audit-logging.sql](changelogs/scenario-5-audit-logging.sql) | Demonstrates audit-quality logging output (elapsed time, row counts, query results) | Working |
-| [changelogs/scenario-6-functions.sql](changelogs/scenario-6-functions.sql) | Documents BTEQ limitation with SQL functions | **Known Limitation** - see below |
-| [changelogs/scenario-7-triggers.sql](changelogs/scenario-7-triggers.sql) | Documents BTEQ limitation with triggers | **Known Limitation** - see below |
+| ~~[changelogs/scenario-6-functions.sql](changelogs/scenario-6-functions.sql)~~ | Documents BTEQ limitation with SQL functions | **Known Limitation** - see below |
+| ~~[changelogs/scenario-7-triggers.sql](changelogs/scenario-7-triggers.sql)~~ | Documents BTEQ limitation with triggers | **Known Limitation** - see below |
 | [changelogs/scenario-8-lob-json-xml.sql](changelogs/scenario-8-lob-json-xml.sql) | Demonstrates CLOB, BLOB, JSON, and XML column support | Working |
 
 Each scenario is **self-contained** and can be run independently in any order after running `reset.sh`.
