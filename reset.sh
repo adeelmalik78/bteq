@@ -219,6 +219,8 @@ echo "  liquibase update --changelog-file=changelogs/scenario-1-macro-output.sql
 echo "  liquibase update --changelog-file=changelogs/scenario-2-query-results.sql"
 echo "  liquibase update --changelog-file=changelogs/scenario-3-stored-procedures.sql"
 echo "  liquibase update --changelog-file=changelogs/scenario-4-rollback.sql"
+echo "  liquibase update --changelog-file=changelogs/scenario-6-lob-json-xml.sql"
+echo "  liquibase update --changelog-file=changelogs/scenario-7-maxerror.sql"
 echo ""
 
 exit 0
