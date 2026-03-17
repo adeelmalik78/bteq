@@ -20,30 +20,17 @@ The BTEQ Executor enables Liquibase to capture complete output from Teradata ope
 | [reset.sh](reset.sh) | Idempotent script to create fresh `bteq_demo` database | |
 | [changelogs/scenario-1-macro-output.sql](changelogs/scenario-1-macro-output.sql) | Demonstrates macro execution output capture | Working |
 | [changelogs/scenario-2-query-results.sql](changelogs/scenario-2-query-results.sql) | Demonstrates SELECT streaming and MINUS queries | Working |
-| ~~[changelogs/scenario-3-stored-procedures.sql](changelogs/scenario-3-stored-procedures.sql)~~ | Demonstrates stored procedure creation and CALL execution | **Blocked** - see [Issue #3](https://github.com/recampbell/bteq-executor/issues/3) |
+| [changelogs/scenario-3-stored-procedures.sql](changelogs/scenario-3-stored-procedures.sql) | Demonstrates stored procedure creation, versioning, and `.COMPILE FILE` in rollback | Working |
 | [changelogs/scenario-4-rollback.sql](changelogs/scenario-4-rollback.sql) | Demonstrates rollback functionality with tagged changesets | Working |
 | [changelogs/scenario-5-audit-logging.sql](changelogs/scenario-5-audit-logging.sql) | Demonstrates audit-quality logging output (elapsed time, row counts, query results) | Working |
-| ~~[changelogs/scenario-6-functions.sql](changelogs/scenario-6-functions.sql)~~ | Documents BTEQ limitation with SQL functions | **Known Limitation** - see below |
-| ~~[changelogs/scenario-7-triggers.sql](changelogs/scenario-7-triggers.sql)~~ | Documents BTEQ limitation with triggers | **Known Limitation** - see below |
-| [changelogs/scenario-8-lob-json-xml.sql](changelogs/scenario-8-lob-json-xml.sql) | Demonstrates CLOB, BLOB, JSON, and XML column support | Working |
+| [changelogs/scenario-6-lob-json-xml.sql](changelogs/scenario-6-lob-json-xml.sql) | Demonstrates CLOB, BLOB, JSON, and XML column support | Working |
+| [changelogs/scenario-7-maxerror.sql](changelogs/scenario-7-maxerror.sql) | Demonstrates BTEQ error handling — exits on error, skips subsequent statements | Working |
 
 Each scenario is **self-contained** and can be run independently in any order after running `reset.sh`.
 
-### Known BTEQ Limitations (Scenarios 6-7)
+### Known BTEQ Limitations
 
-Scenarios 6 and 7 document **fundamental BTEQ limitations** that cannot be worked around:
-
-| Object Type | BTEQ Inline | `.COMPILE FILE` | Recommendation |
-|-------------|-------------|-----------------|----------------|
-| Stored Procedure | ❌ Fails | ✅ Works | Use `.COMPILE FILE` (Issue #3) |
-| SQL Function | ❌ Fails | ❌ Not supported | **Use JDBC** (remove `runWith:bteq`) |
-| Trigger | ❌ Fails | ❌ Not supported | **Use JDBC** (remove `runWith:bteq`) |
-
-**Root cause:** BTEQ parses semicolons as statement terminators at the client level. Compound statements with `BEGIN`/`END` blocks containing semicolons are split incorrectly.
-
-**Documentation reference:** See `docs/bteq-docs/06-bteq-commands.md` (COMPILE command) which states: *"The COMPILE command is used only for SQL (internal) stored procedures."*
-
-For functions and triggers with `BEGIN`/`END` blocks, remove `runWith:bteq` to use JDBC instead.
+BTEQ parses semicolons as statement terminators at the client level. Objects with `BEGIN`/`END` blocks (stored procedures, functions, triggers) cannot be created inline. The executor automatically handles **stored procedures** by extracting them to `.spl` files and using `.COMPILE FILE`. Functions and triggers are **not supported** by `.COMPILE FILE` — use JDBC (remove `runWith:bteq`) for those object types.
 
 ## Prerequisites
 
@@ -54,13 +41,16 @@ Before running the demos, ensure you have:
 - **Teradata JDBC Driver** - Download from [Teradata Downloads](https://downloads.teradata.com/download/connectivity/jdbc-driver)
   - Place the JAR file in a known location (e.g., `~/lib/terajdbc.jar`)
   - Add to Liquibase classpath (see below)
-- **liquibase-commercial-teradata.jar** - This is the Teradata extension with BTEQ integration.
-  - Place the JAR file in the same location as the `teradatajdbc.jar`
-![JAR files location in Liquibase install directory](jars/jar_files.png)
 - **Java 17+** - Required for Liquibase 4.29.0
-- **Liquibase 5.1.0+** - With the BTEQ executor extension jar
+- **Maven** - To build the BTEQ executor extension
+- **Liquibase 4.29.0+** - With the BTEQ executor extension jar
 
+### Build the Extension
 
+```bash
+cd ..  # Return to project root
+mvn clean package -DskipTests
+```
 
 ### Configure Teradata JDBC Driver
 
@@ -100,6 +90,29 @@ Run the reset script to automatically:
 ./reset.sh
 ```
 
+**Environment variable overrides:**
+
+You can customize connection details and credentials via environment variables:
+
+```bash
+# Customize Teradata connection (admin credentials to create demo environment)
+TD_HOST=my-teradata-server TD_USER=myuser TD_PASSWORD=mypass ./reset.sh
+
+# Customize demo user credentials (for running Liquibase)
+DEMO_USER=my_demo_user DEMO_PASSWORD=my_demo_pass ./reset.sh
+
+# Combine both
+TD_HOST=my-server TD_USER=dbc TD_PASSWORD=dbc_pass \
+DEMO_USER=demo_user DEMO_PASSWORD=demo_pass \
+./reset.sh
+```
+
+**Default values:**
+- Admin: `dbc/dbc` on `localhost:1025`
+- Demo user: `demo_user/demo_pass`
+- Database: `bteq_demo`
+
+**Note**: You only need admin credentials (dbc) for the reset script. The demos will run as the `demo_user`, which has limited permissions on only the `bteq_demo` database.
 
 ### 2. Run Demo Scenarios
 
@@ -121,8 +134,11 @@ liquibase update --changelog-file=changelogs/scenario-4-rollback.sql
 # Scenario 5: Audit-quality logging
 liquibase update --changelog-file=changelogs/scenario-5-audit-logging.sql
 
-# Scenario 8: LOB, JSON, and XML support
-liquibase update --changelog-file=changelogs/scenario-8-lob-json-xml.sql
+# Scenario 6: LOB, JSON, and XML support
+liquibase update --changelog-file=changelogs/scenario-6-lob-json-xml.sql
+
+# Scenario 7: BTEQ error handling (maxerror)
+liquibase update --changelog-file=changelogs/scenario-7-maxerror.sql
 ```
 
 ## Demo Scenarios
@@ -200,17 +216,21 @@ item_id  item_name          quantity  category
 5. Executes MINUS query (zero rows - demonstrates backup validation pattern)
 6. Cleans up all objects
 
-### Scenario 3: Stored Procedure Execution
+### Scenario 3: Stored Procedure Creation, Versioning, and Rollback
 
 **File**: [changelogs/scenario-3-stored-procedures.sql](changelogs/scenario-3-stored-procedures.sql)
 
-**Demonstrates**: CALL statement execution and procedure output capture
+**Demonstrates**: Automatic `.COMPILE FILE` extraction for stored procedure DDL — both in forward deployment and rollback
 
-**Key Feature**: Captures result sets returned by stored procedures, including multi-row results.
+**Key Feature**: The BTEQ executor automatically detects `CREATE/REPLACE PROCEDURE` DDL, extracts the procedure body into a temporary `.spl` file, and replaces the SQL with a `.COMPILE FILE` command. This happens transparently in both forward and rollback directions — changelog authors write standard procedure DDL and the executor handles the rest.
 
 **Run**:
 ```bash
+# Deploy all changesets (creates table, procedure v1, calls it, upgrades to v2, calls again)
 liquibase update --changelog-file=changelogs/scenario-3-stored-procedures.sql
+
+# Roll back the v2 upgrade — tests .COMPILE FILE in rollback (restores v1 procedure)
+liquibase rollback-count 3 --changelog-file=changelogs/scenario-3-stored-procedures.sql
 ```
 
 **Expected Output**:
@@ -219,62 +239,62 @@ liquibase update --changelog-file=changelogs/scenario-3-stored-procedures.sql
 [INFO] Executing with the 'bteq' executor
 [INFO] CALL insert_order(101, 'Widget A', 5);
 [INFO]
-status                         order_id  product_name  quantity
------------------------------  --------  ------------  --------
-Order inserted successfully         101  Widget A             5
+status           order_id  product_name  quantity
+---------------  --------  ------------  --------
+Order inserted        101  Widget A             5
+
+[INFO] Executing changeset: demo:s3-call-procedure-2
+[INFO] Executing with the 'bteq' executor
+[INFO] CALL insert_order(102, 'Gadget X', 3);
+[INFO]
+status            order_id  product_name  quantity
+----------------  --------  ------------  --------
+Order confirmed        101  Widget A             5
+Order confirmed        102  Gadget X             3
 ```
 
 **What It Does**:
 1. Creates `demo_orders` table
-2. Creates `insert_order` stored procedure with validation logic
-3. Calls procedure to insert first order (captures procedure output)
-4. Verifies order was inserted
-5. Calls procedure to insert second order
-6. Cleans up all objects
+2. Creates `insert_order` stored procedure v1 (returns "Order inserted")
+3. Calls v1 to insert first order — captures procedure output
+4. Upgrades procedure to v2 (returns "Order confirmed") — rollback contains v1 DDL
+5. Calls v2 to insert second order — captures updated output
+6. Verifies all orders via SELECT query
 
-### Scenario 4: Rollback Demonstration
+### Scenario 4: Rollback Output Visibility
 
 **File**: [changelogs/scenario-4-rollback.sql](changelogs/scenario-4-rollback.sql)
 
-**Demonstrates**: Liquibase rollback functionality with BTEQ executor
+**Demonstrates**: BTEQ captures the same rich logging output during rollback as it does during forward deployment
 
 **Key Features**:
-- Tagged changesets for rollback-to-tag
-- Rollback-count functionality
-- Demonstrates that BTEQ changesets can be rolled back like any other changeset
+- DDL rollback messages (`*** Table has been dropped.`, `*** Macro has been dropped.`)
+- DML rollback row counts (`*** Delete completed. N rows removed.`, `*** Update completed. N rows changed.`)
+- Elapsed time per rollback statement
+- Contrast with JDBC, which only reports "Changeset rolled back successfully"
 
 **Run**:
 ```bash
-# Step 1: Deploy all changesets (creates table, inserts 5 customers)
+# Step 1: Deploy all changesets
 liquibase update --changelog-file=changelogs/scenario-4-rollback.sql
 
-# Step 2: Verify current state (5 customers)
-liquibase rollback-count 0 --changelog-file=changelogs/scenario-4-rollback.sql 2>/dev/null || true
-# Or query directly: SELECT * FROM demo_customers;
+# Step 2: Roll back last 3 changesets — watch the BTEQ output
+liquibase rollback-count 3 --changelog-file=changelogs/scenario-4-rollback.sql
 
-# Step 3: Rollback last 2 changesets (removes customers 4 and 5, keeps 1-3)
-liquibase rollback-count 2 --changelog-file=changelogs/scenario-4-rollback.sql
-
-# Step 4: Re-apply to restore customers 4 and 5
+# Step 3: Re-apply and roll back everything
 liquibase update --changelog-file=changelogs/scenario-4-rollback.sql
-
-# Step 5: Rollback to 'three-customers' tag (same result as rollback-count 2)
-liquibase rollback three-customers --changelog-file=changelogs/scenario-4-rollback.sql
-
-# Step 6: Rollback to 'baseline' tag (keeps only customer 1)
-liquibase rollback baseline --changelog-file=changelogs/scenario-4-rollback.sql
-
-# Cleanup: Run reset.sh to drop demo_customers table for next demo run
-./reset.sh
+liquibase rollback-count 6 --changelog-file=changelogs/scenario-4-rollback.sql
 ```
 
 **What It Does**:
-1. Creates `demo_customers` table
-2. Inserts 5 customers with tags at strategic points:
-   - `baseline` tag after first customer
-   - `three-customers` tag after third customer
-3. Verifies all 5 customers are present
-4. Demonstrates rollback-count and rollback-to-tag
+1. Creates `demo_tracking` table (DDL)
+2. Inserts 5 tracking event rows (DML)
+3. Alters the table to add a column (DDL)
+4. Updates rows with category values (DML)
+5. Creates a summary table with aggregated data (DDL + DML)
+6. Creates a reporting macro (DDL)
+
+Each rollback exercises a different BTEQ output message type — DROP TABLE, DROP MACRO, DELETE, UPDATE, ALTER — proving that rollback output gets the same audit-quality logging as forward deployment.
 
 **Note**: Unlike other scenarios, this one does NOT auto-cleanup so you can experiment with rollback. Run `./reset.sh` when done to clean up.
 
@@ -325,9 +345,9 @@ CUSTOMER_LOAD                      150000  VERIFIED      2026-01-19
 
 **Customer Value**: This scenario proves the BTEQ executor captures all the logging detail that DBAs require for audit trails - execution time, success/failure status, row counts, and actual query data.
 
-### Scenario 8: LOB, JSON, and XML Column Support
+### Scenario 6: LOB, JSON, and XML Column Support
 
-**File**: [changelogs/scenario-8-lob-json-xml.sql](changelogs/scenario-8-lob-json-xml.sql)
+**File**: [changelogs/scenario-6-lob-json-xml.sql](changelogs/scenario-6-lob-json-xml.sql)
 
 **Demonstrates**: Working with Teradata LOB types (CLOB, BLOB, JSON, XML) through BTEQ
 
@@ -339,7 +359,7 @@ CUSTOMER_LOAD                      150000  VERIFIED      2026-01-19
 
 **Run**:
 ```bash
-liquibase update --changelog-file=changelogs/scenario-8-lob-json-xml.sql
+liquibase update --changelog-file=changelogs/scenario-6-lob-json-xml.sql
 ```
 
 **Expected Output**:
@@ -368,6 +388,38 @@ doc_id  doc_name   content_preview
 - **BLOB**: Use `'hexstring'XB` format (e.g., `'48656C6C6F'XB` = "Hello")
 - **XML**: String literals are auto-parsed; query with `XMLSERIALIZE()` not `CAST()`
 - **Size limit**: Inline string literals limited to 31,000 characters. For larger LOBs, use JDBC or external files.
+
+### Scenario 7: BTEQ Error Handling (MAXERROR)
+
+**File**: [changelogs/scenario-7-maxerror.sql](changelogs/scenario-7-maxerror.sql)
+
+**Demonstrates**: BTEQ exits immediately on error, preventing subsequent statements from executing
+
+**Key Feature**: The BTEQ executor injects `.SET MAXERROR 1` at the top of every generated script. When a SQL statement fails, BTEQ exits with return code 8 instead of continuing to the next statement. This is critical for safety — a failed CREATE TABLE should not be followed by INSERTs into a non-existent table.
+
+**Run**:
+```bash
+liquibase update --changelog-file=changelogs/scenario-7-maxerror.sql
+```
+
+**Expected Output**:
+```
+*** Failure 3739 The user must give a data type for broken_name.
+                Statement# 1, Info =100
+
+ *** Exiting BTEQ...
+ *** RC (return code) = 8
+```
+
+**What It Does**:
+1. Creates `demo_maxerror_log` table and inserts a setup row (changeset 1 — succeeds)
+2. Attempts to CREATE TABLE with a deliberate syntax error — missing data type on `broken_name` column (changeset 2 — fails)
+3. BTEQ reports the error and exits immediately — the two INSERT statements after the failed CREATE never execute
+4. Liquibase reports the failure with the complete BTEQ error output
+
+**Customer Value**: This proves that the BTEQ executor fails safely. A syntax error or DDL failure stops execution immediately, preventing data corruption from subsequent statements that depend on the failed operation. The complete error message (Teradata error code 3739, statement number, column name) is captured in the Liquibase output for diagnosis.
+
+**Note**: This scenario intentionally fails on changeset 2. Run `./reset.sh` to clean up before re-running.
 
 ## Configuration Options
 
